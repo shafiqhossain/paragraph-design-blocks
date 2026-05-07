@@ -1,0 +1,124 @@
+{#
+/**
+ * @file
+ * Default theme implementation to display a paragraph.
+ *
+ * Available variables:
+ * - paragraph: Full paragraph entity.
+ *   Only method names starting with "get", "has", or "is" and a few common
+ *   methods such as "id", "label", and "bundle" are available. For example:
+ *   - paragraph.getCreatedTime() will return the paragraph creation timestamp.
+ *   - paragraph.id(): The paragraph ID.
+ *   - paragraph.bundle(): The type of the paragraph, for example, "image" or "text".
+ *   - paragraph.getOwnerId(): The user ID of the paragraph author.
+ *   See Drupal\paragraphs\Entity\Paragraph for a full list of public properties
+ *   and methods for the paragraph object.
+ * - content: All paragraph items. Use {{ content }} to print them all,
+ *   or print a subset such as {{ content.field_example }}. Use
+ *   {{ content|without('field_example') }} to temporarily suppress the printing
+ *   of a given child element.
+ * - attributes: HTML attributes for the containing element.
+ *   The attributes.class element may contain one or more of the following
+ *   classes:
+ *   - paragraphs: The current template type (also known as a "theming hook").
+ *   - paragraphs--type-[type]: The current paragraphs type. For example, if the paragraph is an
+ *     "Image" it would result in "paragraphs--type--image". Note that the machine
+ *     name will often be in a short form of the human readable label.
+ *   - paragraphs--view-mode--[view_mode]: The View Mode of the paragraph; for example, a
+ *     preview would result in: "paragraphs--view-mode--preview", and
+ *     default: "paragraphs--view-mode--default".
+ * - view_mode: View mode; for example, "preview" or "full".
+ * - logged_in: Flag for authenticated user status. Will be true when the
+ *   current user is a logged-in member.
+ * - is_admin: Flag for admin user status. Will be true when the current user
+ *   is an administrator.
+ *
+ * @see template_preprocess_paragraph()
+ *
+ * @ingroup themeable
+ */
+#}
+{% if (paragraph.field_image_alignment.value == 'left') %}
+  {% set twp_image_alignment_class = 'text-with-picture-align-image-left' %}
+{%  else %}
+  {% set twp_image_alignment_class = 'text-with-picture-align-image-right' %}
+{% endif %}
+
+{% if paragraph.field_layout_style.value == 1  %}
+  {% set twp_layout_style_class = 'text-with-picture-layout-right-to-left' %}
+{% elseif paragraph.field_layout_style.value == 2  %}
+  {% set twp_layout_style_class = 'text-with-picture-layout-normal' %}
+{% elseif paragraph.field_layout_style.value == 3 %}
+  {% set twp_layout_style_class = 'text-with-picture-layout-left-to-right' %}
+{% else %}
+  {% set twp_layout_style_class = 'text-with-picture-layout-left-to-right' %}
+{% endif %}
+
+{%
+  set classes = [
+    'paragraph',
+    'paragraph--type--' ~ paragraph.bundle|clean_class,
+    view_mode ? 'paragraph--view-mode--' ~ view_mode|clean_class,
+    not paragraph.isPublished() ? 'paragraph--unpublished',
+    twp_image_alignment_class,
+    twp_layout_style_class
+  ]
+%}
+
+{# anchor start #}
+{% if paragraph.field_anchor_position is empty %}
+  {% set anchor_pos = 1 %}
+{% else %}
+  {% set anchor_pos = paragraph.field_anchor_position %}
+{% endif %}
+{# anchor end #}
+
+{% block paragraph %}
+  <div{{ attributes.addClass(classes) }} data-type-anchor="anchor-position--text-with-picture-{{ anchor_pos }}">
+    <div id="anchor-position--text-with-picture-{{ anchor_pos }}"></div>
+    <div class="container clearfix">
+      <h2 class="text-with-picture-headline">{{ paragraph.field_twp_headline.value }}</h2>
+      {% if paragraph.field_image_alignment.value == 'left' %}
+        <div class="text-with-picture-content-wrapper">
+          <div class="text-with-picture-media">
+            <img class="lazyload text-with-image" src="{{ file_url(paragraph.field_twp_image.entity.field_media_image.entity.uri.value | image_style('text_with_picture')) }}"
+                 alt="{{ paragraph.field_twp_headline.value }}" />
+          </div>
+          <div class="text-with-picture-inner-content">
+            <div class="text-with-picture-content">{{ paragraph.field_twp_text.value|raw }}</div>
+            {% if paragraph.field_twp_link.title is not empty %}
+              {% set link_url = paragraph.field_twp_link.0.url.toString() is empty ? '#' : paragraph.field_twp_link.0.url  %}
+              <div class="text-with-picture-link-wrapper">
+                <a class="text-with-picture-link" href="{{ link_url }}" alt="{{ 'Call to action'|t }}">
+                  {{ paragraph.field_twp_link.title }}
+                </a>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      {% else %}
+        <div class="text-with-picture-content-wrapper">
+          <div class="text-with-picture-inner-content">
+            <div class="text-with-picture-media mobile-view">
+              <img class="lazyload text-with-image" src="{{ file_url(paragraph.field_twp_image.entity.field_media_image.entity.uri.value | image_style('text_with_picture')) }}"
+                   alt="{{ paragraph.field_twp_image.entity.field_media_image.alt }}" />
+            </div>
+            <div class="text-with-picture-content">{{ paragraph.field_twp_text.value|raw }}</div>
+            {% if paragraph.field_twp_link.title is not empty %}
+              {% set link_url = paragraph.field_twp_link.0.url.toString() is empty ? '#' : paragraph.field_twp_link.0.url  %}
+              <div class="text-with-picture-link-wrapper">
+                <a class="text-with-picture-link" href="{{ link_url }}" alt="{{ 'Call to action'|t }}">
+                {{ paragraph.field_twp_link.title }}
+                </a>
+              </div>
+            {% endif %}
+          </div>
+          <div class="text-with-picture-media desktop-view">
+            <img class="lazyload text-with-image" src="{{ file_url(paragraph.field_twp_image.entity.field_media_image.entity.uri.value | image_style('text_with_picture')) }}"
+                 alt="{{ paragraph.field_twp_image.entity.field_media_image.alt }}" />
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock paragraph %}

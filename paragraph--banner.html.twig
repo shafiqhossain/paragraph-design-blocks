@@ -1,0 +1,205 @@
+{#
+/**
+ * @file
+ * Default theme implementation to display a paragraph.
+ *
+ * Available variables:
+ * - paragraph: Full paragraph entity.
+ *   Only method names starting with "get", "has", or "is" and a few common
+ *   methods such as "id", "label", and "bundle" are available. For example:
+ *   - paragraph.getCreatedTime() will return the paragraph creation timestamp.
+ *   - paragraph.id(): The paragraph ID.
+ *   - paragraph.bundle(): The type of the paragraph, for example, "image" or "text".
+ *   - paragraph.getOwnerId(): The user ID of the paragraph author.
+ *   See Drupal\paragraphs\Entity\Paragraph for a full list of public properties
+ *   and methods for the paragraph object.
+ * - content: All paragraph items. Use {{ content }} to print them all,
+ *   or print a subset such as {{ content.field_example }}. Use
+ *   {{ content|without('field_example') }} to temporarily suppress the printing
+ *   of a given child element.
+ * - attributes: HTML attributes for the containing element.
+ *   The attributes.class element may contain one or more of the following
+ *   classes:
+ *   - paragraphs: The current template type (also known as a "theming hook").
+ *   - paragraphs--type-[type]: The current paragraphs type. For example, if the paragraph is an
+ *     "Image" it would result in "paragraphs--type--image". Note that the machine
+ *     name will often be in a short form of the human readable label.
+ *   - paragraphs--view-mode--[view_mode]: The View Mode of the paragraph; for example, a
+ *     preview would result in: "paragraphs--view-mode--preview", and
+ *     default: "paragraphs--view-mode--default".
+ * - view_mode: View mode; for example, "preview" or "full".
+ * - logged_in: Flag for authenticated user status. Will be true when the
+ *   current user is a logged-in member.
+ * - is_admin: Flag for admin user status. Will be true when the current user
+ *   is an administrator.
+ *
+ * @see template_preprocess_paragraph()
+ *
+ * @ingroup themeable
+ */
+#}
+{% if paragraph.field_banner_type.value == 1 %}
+  {% set banner_type_class = 'banner-type-promotional' %}
+{% elseif paragraph.field_banner_type.value == 2 %}
+  {% set banner_type_class = 'banner-type-cookie' %}
+{% else %}
+  {% set banner_type_class = 'banner-type-cta' %}
+{% endif %}
+
+{% if paragraph.field_banner_top_style.value == 3 %}
+  {% set banner_top_style_class = 'banner-angle-type-skew-left' %}
+{% elseif paragraph.field_banner_top_style.value == 2 %}
+  {% set banner_top_style_class = 'banner-angle-type-skew-right' %}
+{% else %}
+  {% set banner_top_style_class = 'banner-angle-type-skew-linear' %}
+{% endif %}
+
+{% if paragraph.field_banner_layout_color.value == 2 %}
+  {% set banner_layout_class = 'banner-style-gray' %}
+{% elseif paragraph.field_banner_layout_color.value == 3 %}
+  {% set banner_layout_class = 'banner-style-white' %}
+{% else %}
+  {% set banner_layout_class = 'banner-style-blue' %}
+{% endif %}
+
+{%
+  set classes = [
+    'paragraph',
+    'paragraph--type--' ~ paragraph.bundle|clean_class,
+    view_mode ? 'paragraph--view-mode--' ~ view_mode|clean_class,
+    not paragraph.isPublished() ? 'paragraph--unpublished',
+    banner_layout_class,
+    banner_top_style_class,
+    banner_type_class
+  ]
+%}
+
+{# anchor start #}
+{% if paragraph.field_anchor_position is empty %}
+  {% set anchor_pos = 1 %}
+{% else %}
+  {% set anchor_pos = paragraph.field_anchor_position %}
+{% endif %}
+{# anchor end #}
+
+{% block paragraph %}
+  <div{{ attributes.addClass(classes) }} data-type-anchor="anchor-position--banner-{{ anchor_pos }}">
+    <div id="anchor-position--banner-{{ anchor_pos }}"></div>
+    <div class="container clearfix">
+      {# Banner type: Promotional #}
+      {% if paragraph.field_banner_type.value == 1 %}
+        <div class="banner-inner">
+          <div class="banner-head-and-text">
+            {# Check if Banner headline and text should be hidden. #}
+            {% if paragraph.field_hide_banner_headtext.value == false %}
+              {% if paragraph.field_banner_headline.value is not empty %}
+                <h3 class="banner-headline">{{ paragraph.field_banner_headline.value }}</h3>
+              {% endif %}
+              {% if paragraph.field_banner_text.value is not empty %}
+                <div class="banner-text">{{ paragraph.field_banner_text.value|raw }}</div>
+              {% endif %}
+            {% endif %}
+          </div>
+          <div class="banner-media-wrapper">
+            {# Check if Banner image is empty. #}
+            {% if paragraph.field_banner_image.isEmpty() != true %}
+              <img class="lazyload banner-image" src="{{ file_url(paragraph.field_banner_image.entity.field_media_image.entity.uri.value | image_style('promotional_banner')) }}"
+                   alt="{{ paragraph.field_banner_image.entity.field_media_image.alt }}" />
+            {% endif %}
+          </div>
+        </div>
+
+      {# Banner type: Cookie #}
+      {% elseif paragraph.field_banner_type.value == 2 %}
+        <div class="banner-inner">
+          <div class="banner-head-and-text">
+            {# Check if Banner headline and text should be hidden. #}
+            {% if paragraph.field_hide_banner_headtext.value == false %}
+              {% if paragraph.field_banner_headline.value is not empty %}
+              <h3 class="banner-headline">{{ paragraph.field_banner_headline.value }}</h3>
+              {% endif %}
+              {% if paragraph.field_banner_text.value is not empty %}
+              <div class="banner-text">{{ paragraph.field_banner_text.value|raw }}</div>
+              {% endif %}
+            {% endif %}
+          </div>
+          <div class="banner-link-wrapper banner-cookie-link-wrapper">
+            {# Check if Banner Cookie link 1 is empty. #}
+            {% if paragraph.field_banner_cookie_link_1.title is not empty %}
+              {% set cookie_url = paragraph.field_banner_cookie_link_1.0.url.toString() is empty ? '#' :
+                paragraph.field_banner_cookie_link_1.0.url  %}
+              <a class="banner-link banner-cookie-link-1" href="{{ cookie_url }}" alt="{{ 'Call to action'|t }}">
+                {{ paragraph.field_banner_cookie_link_1.title }}
+              </a>
+            {% endif %}
+            {# Check if Banner Cookie link 2 is empty. #}
+            {% if paragraph.field_banner_cookie_link_2.title is not empty %}
+              {% set cookie_url = paragraph.field_banner_cookie_link_2.0.url.toString() is empty ? '#' :
+                paragraph.field_banner_cookie_link_2.0.url  %}
+              <a class="banner-link banner-cookie-link-2" href="{{ cookie_url }}" alt="{{ 'Call to action'|t }}">
+                {{ paragraph.field_banner_cookie_link_2.title }}
+              </a>
+            {% endif %}
+          </div>
+        </div>
+
+      {# Banner type: CTA #}
+      {% elseif paragraph.field_banner_type.value == 3 %}
+        {% if paragraph.field_banner_cta_layout_type.value == 2 %}
+          {% set cta_layout_type_class = 'cta-layout-right' %} {# CTA Right #}
+        {% else %}
+          {% set cta_layout_type_class = 'cta-layout-left' %} {# CTA Left #}
+        {% endif %}
+        <div class="banner-inner {{ cta_layout_type_class }}">
+          {% if paragraph.field_banner_cta_layout_type.value == 2 %} {# CTA Right #}
+            <div class="banner-head-and-text">
+            {# Check if Banner headline and text should be hidden. #}
+            {% if paragraph.field_hide_banner_headtext.value == false %}
+              {% if paragraph.field_banner_headline.value is not empty %}
+                <h3 class="banner-headline">{{ paragraph.field_banner_headline.value }}</h3>
+              {% endif %}
+              {% if paragraph.field_banner_text.value is not empty %}
+                <div class="banner-text">{{ paragraph.field_banner_text.value|raw }}</div>
+              {% endif %}
+            {% endif %}
+            </div>
+            <div class="banner-link-wrapper banner-cta-link-wrapper">
+              {# Check if Banner CTA link is empty. #}
+              {% if paragraph.field_banner_cta_link.title is not empty %}
+                {% set cta_url = paragraph.field_banner_cta_link.0.url.toString() is empty ? '#' :
+                  paragraph.field_banner_cta_link.0.url  %}
+                <a class="banner-link banner-cta-link" href="{{ cta_url }}" alt="{{ 'Call to action'|t }}">
+                  {{ paragraph.field_banner_cta_link.title }}
+                </a>
+              {% endif %}
+            </div>
+          {% else %}
+            <div class="banner-link-wrapper banner-cta-link-wrapper">
+              {# Check if Banner CTA link is empty. #}
+              {% if paragraph.field_banner_cta_link.title is not empty %}
+                {% set cta_url = paragraph.field_banner_cta_link.0.url.toString() is empty ? '#' :
+                  paragraph.field_banner_cta_link.0.url  %}
+                <a class="banner-link banner-cta-link" href="{{ cta_url }}" alt="{{ 'Call to action'|t }}">
+                  {{ paragraph.field_banner_cta_link.title }}
+                </a>
+              {% endif %}
+            </div>
+            <div class="banner-head-and-text">
+              {# Check if Banner headline and text should be hidden. #}
+              {% if paragraph.field_hide_banner_headtext.value == false %}
+                {% if paragraph.field_banner_headline.value is not empty %}
+                  <h3 class="banner-headline">{{ paragraph.field_banner_headline.value }}</h3>
+                {% endif %}
+                {% if paragraph.field_banner_text.value is not empty %}
+                  <div class="banner-text">{{ paragraph.field_banner_text.value|raw }}</div>
+                {% endif %}
+              {% endif %}
+            </div>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock paragraph %}
+
+

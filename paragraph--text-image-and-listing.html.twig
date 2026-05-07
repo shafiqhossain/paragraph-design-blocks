@@ -1,0 +1,257 @@
+{#
+/**
+ * @file
+ * Default theme implementation to display a paragraph.
+ *
+ * Available variables:
+ * - paragraph: Full paragraph entity.
+ *   Only method names starting with "get", "has", or "is" and a few common
+ *   methods such as "id", "label", and "bundle" are available. For example:
+ *   - paragraph.getCreatedTime() will return the paragraph creation timestamp.
+ *   - paragraph.id(): The paragraph ID.
+ *   - paragraph.bundle(): The type of the paragraph, for example, "image" or "text".
+ *   - paragraph.getOwnerId(): The user ID of the paragraph author.
+ *   See Drupal\paragraphs\Entity\Paragraph for a full list of public properties
+ *   and methods for the paragraph object.
+ * - content: All paragraph items. Use {{ content }} to print them all,
+ *   or print a subset such as {{ content.field_example }}. Use
+ *   {{ content|without('field_example') }} to temporarily suppress the printing
+ *   of a given child element.
+ * - attributes: HTML attributes for the containing element.
+ *   The attributes.class element may contain one or more of the following
+ *   classes:
+ *   - paragraphs: The current template type (also known as a "theming hook").
+ *   - paragraphs--type-[type]: The current paragraphs type. For example, if the paragraph is an
+ *     "Image" it would result in "paragraphs--type--image". Note that the machine
+ *     name will often be in a short form of the human readable label.
+ *   - paragraphs--view-mode--[view_mode]: The View Mode of the paragraph; for example, a
+ *     preview would result in: "paragraphs--view-mode--preview", and
+ *     default: "paragraphs--view-mode--default".
+ * - view_mode: View mode; for example, "preview" or "full".
+ * - logged_in: Flag for authenticated user status. Will be true when the
+ *   current user is a logged-in member.
+ * - is_admin: Flag for admin user status. Will be true when the current user
+ *   is an administrator.
+ *
+ * @see template_preprocess_paragraph()
+ *
+ * @ingroup themeable
+ */
+#}
+{%
+  set classes = [
+    'paragraph',
+    'paragraph--type--' ~ paragraph.bundle|clean_class,
+    view_mode ? 'paragraph--view-mode--' ~ view_mode|clean_class,
+    not paragraph.isPublished() ? 'paragraph--unpublished'
+  ]
+%}
+{% if paragraph.field_til_display_position.value == 2 %}
+  {% set til_display_position_class = 'til-display-oaa' %}
+{% else %}
+  {% set til_display_position_class = 'til-display-sbs' %}
+{% endif %}
+
+{% set til_display_type_class = 'til-display-type-' ~ paragraph.field_til_display_type.value %}
+
+{# anchor start #}
+{% if paragraph.field_anchor_position is empty %}
+  {% set anchor_pos = 1 %}
+{% else %}
+  {% set anchor_pos = paragraph.field_anchor_position %}
+{% endif %}
+{# anchor end #}
+
+{% block paragraph %}
+  <div{{ attributes.addClass(classes) }} data-type-anchor="anchor-position--text-image-and-listing-{{ anchor_pos }}">
+    <div id="anchor-position--text-image-and-listing-{{ anchor_pos }}"></div>
+    <div class="container clearfix">
+      {% if paragraph.field_til_headline.value is not empty %}
+        <h3 class="til-headline">{{ paragraph.field_til_headline.value }}</h3>
+      {% endif %}
+      {% if paragraph.field_til_description_text.value is not empty %}
+        <div class="til-description">{{ paragraph.field_til_description_text.value|raw }}</div>
+      {% endif %}
+
+      {% if paragraph.field_til_display_type.value == 1 %} {# Column Text, Listing #}
+        {% set items_count = 0 + paragraph.field_til_list_items.referencedEntities()|length %}
+        {% if paragraph.field_til_column_text.value is not empty or items_count > 0 %}
+          <div class="text-image-listing-wrapper {{ til_display_position_class }} {{ til_display_type_class }}">
+            {% if paragraph.field_til_column_text.value is not empty %}
+              <div class="til-column-text">{{ paragraph.field_til_column_text.value|raw }}</div>
+            {% endif %}
+            {% if items_count > 0 %}
+              <div class="til-list-items">
+                {% if paragraph.field_list_items_title.value is not empty %}
+                  <h5 class="list-item-title">{{ paragraph.field_list_items_title.value }}</h5>
+                {% endif %}
+                <ul class="lists">
+                  {% for row in paragraph.field_til_list_items.referencedEntities() %}
+                    {% if row.field_til_list_link.value is not empty %}
+                      {% set list_link = row.field_til_list_link.value %}
+                    {% elseif row.field_anchor_menu_section.isEmpty != true %}
+                      {% set list_link = row.field_anchor_menu_section.entity.field_anchor_selector.value ~ '-' ~
+                        row.field_anchor_section_position.value %}
+                    {% else %}
+                      {% set list_link = '#' %}
+                    {% endif %}
+                    <li class="list-item">
+                      <a data-item="{{ paragraph.id() }}-{{ loop.index }}" id="list-item-link-{{ paragraph.id() }}-{{ loop.index }}"
+                         class="list-link list-item-link"
+                         href="{{ list_link }}">{{ row.field_til_list_name.value }}</a>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+
+      {% elseif paragraph.field_til_display_type.value == 2 %} {# Column Text, Image #}
+        {% if paragraph.field_til_column_text.value is not empty or paragraph.field_til_image.isEmpty() != true %}
+          <div class="text-image-listing-wrapper {{ til_display_position_class }} {{ til_display_type_class }}">
+            {% if paragraph.field_til_column_text.value is not empty %}
+              <div class="til-column-text">{{ paragraph.field_til_column_text.value|raw }}</div>
+            {% endif %}
+
+            {% if paragraph.field_til_image.isEmpty() != true %}
+              <div class="til-media-wrapper">
+                <img class="lazyload til-image" src="{{ file_url(paragraph.field_til_image.entity.field_media_image.entity.uri.value | image_style('text_with_picture')) }}"
+                     alt="{{ paragraph.field_til_image.entity.field_media_image.alt }}" />
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+
+      {% elseif paragraph.field_til_display_type.value == 3 %} {# Column Text, Listing, Image #}
+        {% set items_count = 0 + paragraph.field_til_list_items.referencedEntities()|length %}
+        {% if paragraph.field_til_column_text.value is not empty or items_count > 0 or paragraph.field_til_image.isEmpty() != true %}
+          <div class="text-image-listing-wrapper {{ til_display_position_class }} {{ til_display_type_class }}">
+            {% if paragraph.field_til_column_text.value is not empty %}
+              <div class="til-column-text">{{ paragraph.field_til_column_text.value|raw }}</div>
+            {% endif %}
+
+            {% if items_count > 0 %}
+              <div class="til-list-items">
+                {% if paragraph.field_list_items_title.value is not empty %}
+                  <h5 class="list-item-title">{{ paragraph.field_list_items_title.value }}</h5>
+                {% endif %}
+                <ul class="lists">
+                  {% for row in paragraph.field_til_list_items.referencedEntities() %}
+                    {% if row.field_til_list_link.value is not empty %}
+                      {% set list_link = row.field_til_list_link.value %}
+                    {% elseif row.field_anchor_menu_section.isEmpty != true %}
+                      {% set list_link = row.field_anchor_menu_section.entity.field_anchor_selector.value ~ '-' ~
+                        row.field_anchor_section_position.value %}
+                    {% else %}
+                      {% set list_link = '#' %}
+                    {% endif %}
+                    <li class="list-item">
+                      <a data-item="{{ paragraph.id() }}-{{ loop.index }}" id="list-item-link-{{ paragraph.id() }}-{{ loop.index }}"
+                         class="list-link list-item-link"
+                         href="{{ list_link }}">{{ row.field_til_list_name.value }}</a>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            {% endif %}
+
+            {% if paragraph.field_til_image.isEmpty() != true %}
+              <div class="til-media-wrapper">
+                <img class="lazyload til-image" src="{{ file_url(paragraph.field_til_image.entity.field_media_image.entity.uri.value | image_style('text_with_picture')) }}"
+                     alt="{{ paragraph.field_til_image.entity.field_media_image.alt }}" />
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+
+      {% elseif paragraph.field_til_display_type.value == 4 %} {# Listing, Image #}
+        {% set items_count = 0 + paragraph.field_til_list_items.referencedEntities()|length %}
+        {% if items_count > 0 or paragraph.field_til_image.isEmpty() != true %}
+          <div class="text-image-listing-wrapper {{ til_display_position_class }} {{ til_display_type_class }}">
+            {% if items_count > 0 %}
+              <div class="til-list-items">
+                {% if paragraph.field_list_items_title.value is not empty %}
+                  <h5 class="list-item-title">{{ paragraph.field_list_items_title.value }}</h5>
+                {% endif %}
+                <ul class="lists">
+                  {% for row in paragraph.field_til_list_items.referencedEntities() %}
+                    {% if row.field_til_list_link.value is not empty %}
+                      {% set list_link = row.field_til_list_link.value %}
+                    {% elseif row.field_anchor_menu_section.isEmpty != true %}
+                      {% set list_link = row.field_anchor_menu_section.entity.field_anchor_selector.value ~ '-' ~
+                        row.field_anchor_section_position.value %}
+                    {% else %}
+                      {% set list_link = '#' %}
+                    {% endif %}
+                    <li class="list-item">
+                      <a data-item="{{ paragraph.id() }}-{{ loop.index }}" id="list-item-link-{{ paragraph.id() }}-{{ loop.index }}"
+                         class="list-link list-item-link"
+                         href="{{ list_link }}">{{ row.field_til_list_name.value }}</a>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            {% endif %}
+
+            {% if paragraph.field_til_image.isEmpty() != true %}
+              <div class="til-media-wrapper">
+                <img class="lazyload til-image" src="{{ file_url(paragraph.field_til_image.entity.field_media_image.entity.uri.value | image_style('text_with_picture')) }}"
+                     alt="{{ paragraph.field_til_image.entity.field_media_image.alt }}" />
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+
+      {% elseif paragraph.field_til_display_type.value == 5 %} {# Only Column Text #}
+        {% if paragraph.field_til_column_text.value is not empty %}
+          <div class="text-image-listing-wrapper {{ til_display_position_class }} {{ til_display_type_class }}">
+            <div class="til-column-text">{{ paragraph.field_til_column_text.value|raw }}</div>
+          </div>
+        {% endif %}
+
+      {% elseif paragraph.field_til_display_type.value == 6 %} {# Only Listing #}
+        {% set items_count = 0 + paragraph.field_til_list_items.referencedEntities()|length %}
+        {% if items_count > 0 %}
+          <div class="text-image-listing-wrapper {{ til_display_position_class }} {{ til_display_type_class }}">
+            {% if items_count > 0 %}
+              <div class="til-list-items">
+                {% if paragraph.field_list_items_title.value is not empty %}
+                  <h5 class="list-item-title">{{ paragraph.field_list_items_title.value }}</h5>
+                {% endif %}
+                <ul class="lists">
+                  {% for row in paragraph.field_til_list_items.referencedEntities() %}
+                    {% if row.field_til_list_link.value is not empty %}
+                      {% set list_link = row.field_til_list_link.value %}
+                    {% elseif row.field_anchor_menu_section.isEmpty != true %}
+                      {% set list_link = row.field_anchor_menu_section.entity.field_anchor_selector.value ~ '-' ~
+                        row.field_anchor_section_position.value %}
+                    {% else %}
+                      {% set list_link = '#' %}
+                    {% endif %}
+                    <li class="list-item">
+                      <a data-item="{{ paragraph.id() }}-{{ loop.index }}" id="list-item-link-{{ paragraph.id() }}-{{ loop.index }}"
+                         class="list-link list-item-link"
+                         href="{{ list_link }}">{{ row.field_til_list_name.value }}</a>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+
+      {% elseif paragraph.field_til_display_type.value == 7 %} {# Only Image #}
+        {% if paragraph.field_til_image.isEmpty() != true %}
+          <div class="text-image-listing-wrapper {{ til_display_position_class }} {{ til_display_type_class }}">
+              <div class="til-media-wrapper">
+                <img class="lazyload til-image" src="{{ file_url(paragraph.field_til_image.entity.field_media_image.entity.uri.value | image_style('text_with_picture')) }}"
+                     alt="{{ paragraph.field_til_image.entity.field_media_image.alt }}" />
+              </div>
+          </div>
+        {% endif %}
+
+      {% endif %}
+    </div>
+  </div>
+{% endblock paragraph %}

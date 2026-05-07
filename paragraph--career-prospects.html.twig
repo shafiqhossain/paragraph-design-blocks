@@ -1,0 +1,133 @@
+{#
+/**
+ * @file
+ * Default theme implementation to display a paragraph.
+ *
+ * Available variables:
+ * - paragraph: Full paragraph entity.
+ *   Only method names starting with "get", "has", or "is" and a few common
+ *   methods such as "id", "label", and "bundle" are available. For example:
+ *   - paragraph.getCreatedTime() will return the paragraph creation timestamp.
+ *   - paragraph.id(): The paragraph ID.
+ *   - paragraph.bundle(): The type of the paragraph, for example, "image" or "text".
+ *   - paragraph.getOwnerId(): The user ID of the paragraph author.
+ *   See Drupal\paragraphs\Entity\Paragraph for a full list of public properties
+ *   and methods for the paragraph object.
+ * - content: All paragraph items. Use {{ content }} to print them all,
+ *   or print a subset such as {{ content.field_example }}. Use
+ *   {{ content|without('field_example') }} to temporarily suppress the printing
+ *   of a given child element.
+ * - attributes: HTML attributes for the containing element.
+ *   The attributes.class element may contain one or more of the following
+ *   classes:
+ *   - paragraphs: The current template type (also known as a "theming hook").
+ *   - paragraphs--type-[type]: The current paragraphs type. For example, if the paragraph is an
+ *     "Image" it would result in "paragraphs--type--image". Note that the machine
+ *     name will often be in a short form of the human readable label.
+ *   - paragraphs--view-mode--[view_mode]: The View Mode of the paragraph; for example, a
+ *     preview would result in: "paragraphs--view-mode--preview", and
+ *     default: "paragraphs--view-mode--default".
+ * - view_mode: View mode; for example, "preview" or "full".
+ * - logged_in: Flag for authenticated user status. Will be true when the
+ *   current user is a logged-in member.
+ * - is_admin: Flag for admin user status. Will be true when the current user
+ *   is an administrator.
+ *
+ * @see template_preprocess_paragraph()
+ *
+ * @ingroup themeable
+ */
+#}
+{% if paragraph.field_career_layout_style.value == 1 %}
+  {% set career_layout_style = 'career-layout-style-grey' %}
+{% elseif paragraph.field_career_layout_style.value == 2 %}
+  {% set career_layout_style = 'career-layout-style-blue' %}
+{% elseif paragraph.field_career_layout_style.value == 3 %}
+  {% set career_layout_style = 'career-layout-style-white' %}
+{% else %}
+  {% set career_layout_style = 'career-layout-style-blue' %}
+{% endif %}
+
+{%
+  set classes = [
+    'paragraph',
+    'paragraph--type--' ~ paragraph.bundle|clean_class,
+    view_mode ? 'paragraph--view-mode--' ~ view_mode|clean_class,
+    not paragraph.isPublished() ? 'paragraph--unpublished',
+    career_layout_style,
+    paragraph.field_show_sub_desc_in_columns.value ? 'show-description-in-columns',
+  ]
+%}
+
+{# anchor start #}
+{% if paragraph.field_anchor_position is empty %}
+  {% set anchor_pos = 1 %}
+{% else %}
+  {% set anchor_pos = paragraph.field_anchor_position %}
+{% endif %}
+{# anchor end #}
+
+{% block paragraph %}
+  <div{{ attributes.addClass(classes) }} data-type-anchor="anchor-position--career-prospects-{{ anchor_pos }}">
+    <div id="anchor-position--career-prospects-{{ anchor_pos }}"></div>
+    <div class="container clearfix">
+      <h3 class="career-section-title">{{ paragraph.field_career_section_title.value }}</h3>
+      <div class="career-detail-wrapper">
+        <div class="career-description">{{ paragraph.field_career_description.value|raw }}</div>
+        {% if paragraph.field_career_sub_description.value is not empty %}
+        <div id="career-sub-description-wrapper-{{ paragraph.id() }}" class="career-sub-description-wrapper hide-sub-summary">
+          <div class="career-sub-description">{{ paragraph.field_career_sub_description.value|raw }}</div>
+        </div>
+        {% endif %}
+      </div>
+      {% set subdesc = content.field_career_sub_description.0 %} {# without tags #}
+      {% set subdesc_count = subdesc|length %}
+      {% if paragraph.field_career_sub_description.value is not empty and subdesc_count > 1375 %}
+      <div id="career-read-more-wrapper-{{ paragraph.id() }}" class="career-read-more-wrapper">
+        <a id="career-read-more-link-{{ paragraph.id() }}" class="career-read-more-link" href="#">
+          <i class="fas fa-chevron-down"></i>&nbsp;&nbsp;{{ 'Mehr erfahren'|t }}
+        </a>
+      </div>
+      <div id="career-read-less-wrapper-{{ paragraph.id() }}"  class="career-read-less-wrapper">
+        <a id="career-read-less-link-{{ paragraph.id() }}" class="career-read-less-link" href="#">
+          <i class="fas fa-chevron-up"></i>&nbsp;&nbsp;{{ 'Weniger erfahren'|t }}
+        </a>
+      </div>
+      {% else %}
+        <div class="career-read-wrapper"></div>
+      {% endif %}
+      <div id="career-summary-wrapper-{{ paragraph.id() }}" class="career-summary-wrapper">
+        {% if paragraph.field_career_summary_image.isEmpty() == true %}
+          {% set career_summary_class = 'career-summary-fullwidth' %}
+        {% endif %}
+        <div class="career-summary-lists {{ career_summary_class }}">
+          {% set summary_count = 0 + paragraph.field_career_summary_lists.referencedEntities()|length %}
+          {% if summary_count > 0 %}
+            <ul class="summary-list">
+          {% endif %}
+          {% for row in paragraph.field_career_summary_lists.referencedEntities() %}
+            <li class="career-list">
+              <a class="career-list-link use-ajax"
+                 data-dialog-options="{&quot;width&quot;:950, &quot;dialogClass&quot;: &quot;career-summary-dialog&quot;}"
+                 data-dialog-type="modal"
+                 href="/pfh/career/summary/{{ row.id() }}/ajax">
+                {{ row.field_career_summary_title.value }}
+              </a>
+            </li>
+          {% endfor %}
+          {% if summary_count > 0 %}
+            </ul>
+          {% endif %}
+        </div>
+
+        {# Check if Career summary image is empty. #}
+        {% if paragraph.field_career_summary_image.isEmpty() != true %}
+          <div class="career-summary-media">
+            <img class="lazyload career-image" src="{{ file_url(paragraph.field_career_summary_image.entity.field_media_image.entity.uri.value | image_style('career')) }}"
+               alt="{{ paragraph.field_career_summary_image.entity.field_media_image.alt }}" />
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endblock paragraph %}
